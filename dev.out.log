@@ -1,0 +1,15 @@
+
+> nexus@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.1.4 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://10.197.54.138:3000
+- Environments: .env
+
+✓ Starting...
+✓ Ready in 3.8s
+○ Compiling / ...
+ GET /sign-in?redirect_url=http%3A%2F%2Flocalhost%3A3000%2Fresume 200 in 2.1s (proxy.ts: 18ms)
+ GET /sign-in?redirect_url=http%3A%2F%2Flocalhost%3A3000%2Fresume 200 in 719ms (compile: 305ms, proxy.ts: 13ms, render: 401ms)
+[?25h
