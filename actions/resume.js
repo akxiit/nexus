@@ -1,12 +1,9 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithOpenAI } from "@/lib/openai";
 import { revalidatePath } from "next/cache";
 import { getOrCreateDbUser } from "./user";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 export async function saveResume(content) {
   const user = await getOrCreateDbUser();
@@ -34,11 +31,32 @@ export async function getResume() {
   });
 }
 
+function extractSkillsFromResumeContent(content) {
+  const text = String(content || "");
+  if (!text.trim()) return [];
+
+  const skillsSectionMatch = text.match(/##\s*Skills\s*\n+([\s\S]*?)(?=\n##\s|$)/i);
+  const skillsBlock = skillsSectionMatch?.[1] || "";
+
+  return [...new Set(
+    skillsBlock
+      .split(/[\n,•;|]/)
+      .map((skill) => skill.trim())
+      .map((skill) => skill.replace(/^[-*\d.]+\s*/, ""))
+      .filter(Boolean)
+  )];
+}
+
+export async function getResumeSkills() {
+  const resume = await getResume();
+  return extractSkillsFromResumeContent(resume?.content);
+}
+
 export async function improveWithAI({ current, type }) {
   const user = await getOrCreateDbUser();
 
   const prompt = `
-    As an expert resume writer, improve the following ${type} description for a ${user.industry} professional.
+    As an expert resume writer, improve the following ${type} description for a ${user.industry || "technology"} professional.
     Make it more impactful, quantifiable, and aligned with industry standards.
     Current content: "${current}"
 
@@ -54,11 +72,52 @@ export async function improveWithAI({ current, type }) {
   `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    return response.text().trim();
+    const result = await generateWithOpenAI(prompt);
+    return result.trim();
   } catch (error) {
     console.error("Error improving content:", error);
     throw new Error("Failed to improve content");
+  }
+}
+
+export async function generateProfessionalSummary({ specialization, experience, skills }) {
+  const normalizedSkills = Array.isArray(skills)
+    ? skills.filter(Boolean).join(", ")
+    : String(skills || "");
+
+  const normalizedExperience = Array.isArray(experience)
+    ? experience.filter(Boolean).join("; ")
+    : String(experience || "");
+
+  const prompt = `
+    Generate a concise professional resume summary based on:
+    - Specialization/Role: ${specialization || "Technology professional"}
+    - Experience: ${normalizedExperience || "relevant experience"}
+    - Skills: ${normalizedSkills || "technical skills"}
+
+    Create a compelling 3-5 sentence professional summary that:
+    1. Highlights the user's specialization and years of experience
+    2. Mentions the strongest skills and tools from the list above
+    3. Sounds human, confident, and tailored to the role
+
+    Return ONLY the summary text, no markdown formatting or explanations.
+  `;
+
+  try {
+    const generated = await generateWithOpenAI(prompt);
+
+    if (generated) {
+      return generated;
+    }
+
+    throw new Error("Empty summary response");
+  } catch (error) {
+    console.error("Error generating summary:", error);
+
+    const summarySpecialization = specialization || "Technology professional";
+    const summarySkills = normalizedSkills || "relevant tools and technologies";
+    const summaryExperience = normalizedExperience || "practical experience";
+
+    return `${summarySpecialization} with ${summaryExperience} and a strong focus on ${summarySkills}. Known for delivering practical, high-quality work, collaborating effectively, and adapting quickly to new challenges. Seeking opportunities to apply core expertise to build reliable, impactful solutions.`;
   }
 }

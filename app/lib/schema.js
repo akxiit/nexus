@@ -8,16 +8,22 @@ export const onboardingSchema = z.object({
     required_error: "Please select a specialization",
   }),
   bio: z.string().max(500).optional(),
-  experience: z
-    .string()
-    .transform((val) => parseInt(val, 10))
-    .pipe(
-      z
-        .number()
-        .min(0, "Experience must be at least 0 years")
-        .max(50, "Experience cannot exceed 50 years")
-    ),
-  skills: z.string().transform((val) =>
+  experience: z.preprocess(
+    (value) => {
+      if (value === "" || value == null) return undefined;
+      if (typeof value === "string") return Number(value);
+      return value;
+    },
+    z
+      .number({
+        required_error: "Years of experience is required",
+        invalid_type_error: "Please enter a valid number of years",
+      })
+      .finite("Please enter a valid number of years")
+      .min(0, "Experience must be at least 0 years")
+      .max(50, "Experience cannot exceed 50 years")
+  ),
+  skills: z.string().optional().transform((val) =>
     val
       ? val
           .split(",")

@@ -38,32 +38,34 @@ export async function getOrCreateDbUser() {
 
 export async function updateUser(data) {
   const user = await getOrCreateDbUser();
+  const formattedIndustry = data.subIndustry 
+    ? `tech-${data.subIndustry.toLowerCase().replace(/ /g, "-")}`
+    : "tech";
 
   try {
     const result = await db.$transaction(
       async (tx) => {
         let industryInsight = await tx.industryInsight.findUnique({
           where: {
-            industry: data.industry,
+            industry: formattedIndustry,
           },
         });
 
         if (!industryInsight) {
-          const insights = await generateAIInsights(data.industry);
+          const insights = await generateAIInsights(formattedIndustry);
 
           try {
             industryInsight = await tx.industryInsight.create({
               data: {
-                industry: data.industry,
+                industry: formattedIndustry,
                 ...insights,
                 nextUpdate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
               },
             });
           } catch (createError) {
-            // If another request created the same industry concurrently, use that row.
             if (createError?.code === "23505") {
               industryInsight = await tx.industryInsight.findUnique({
-                where: { industry: data.industry },
+                where: { industry: formattedIndustry },
               });
             } else {
               throw createError;
@@ -76,10 +78,9 @@ export async function updateUser(data) {
             id: user.id,
           },
           data: {
-            industry: data.industry,
+            industry: formattedIndustry,
             experience: data.experience,
             bio: data.bio,
-            skills: data.skills,
           },
         });
 
@@ -93,6 +94,7 @@ export async function updateUser(data) {
     revalidatePath("/");
     revalidatePath("/dashboard");
     revalidatePath("/interview");
+    revalidatePath("/interview/mock");
     revalidatePath("/resume");
     revalidatePath("/onboarding");
     return result.updatedUser;
@@ -122,21 +124,21 @@ export async function getUserOnboardingStatus() {
   }
 }
 
+export async function getUserProfile() {
+  return await getOrCreateDbUser();
+}
+
 export async function getCurrentUserProfile() {
   const user = await getOrCreateDbUser();
 
   try {
-    return await db.user.findUnique({
+    const profile = await db.user.findUnique({
       where: { clerkUserId: user.clerkUserId },
-      select: {
-        industry: true,
-        experience: true,
-        bio: true,
-        skills: true,
-      },
     });
+
+    return profile;
   } catch (error) {
-    console.error("Error fetching current user profile:", error.message);
-    throw new Error("Failed to fetch profile");
+    console.error("Error getting user profile:", error.message);
+    throw new Error("Failed to get profile");
   }
 }

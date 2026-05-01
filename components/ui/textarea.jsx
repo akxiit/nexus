@@ -2,13 +2,14 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Textarea({
+const Textarea = React.forwardRef(function Textarea({
   className,
   error,
   ...props
-}) {
+}, ref) {
   return (
     <textarea
+      ref={ref}
       aria-invalid={!!error}
       data-slot="textarea"
       className={cn(
@@ -17,6 +18,8 @@ function Textarea({
       )}
       {...props} />
   );
-}
+})
+
+Textarea.displayName = "Textarea"
 
 export { Textarea }

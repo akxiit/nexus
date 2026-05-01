@@ -1,11 +1,8 @@
 "use server";
 
 import { db } from "@/lib/prisma";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithOpenAI } from "@/lib/openai";
 import { getOrCreateDbUser } from "./user";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 const DEFAULT_SALARY_RANGES = [
   { role: "Junior Professional", min: 45000, max: 70000, median: 56000, location: "Global" },
@@ -109,9 +106,7 @@ export const generateAIInsights = async (industry) => {
         `;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const text = await generateWithOpenAI(prompt);
     const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
 
     return normalizeInsightPayload(JSON.parse(cleanedText));

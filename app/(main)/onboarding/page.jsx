@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { industries } from "@/data/industries";
 import OnboardingForm from "./_components/onboarding-form";
 import { getCurrentUserProfile, getUserOnboardingStatus } from "@/actions/user";
 
@@ -18,25 +17,19 @@ export default async function OnboardingPage({ searchParams }) {
     let initialValues = null;
     if (isOnboarded || isEditMode) {
         const profile = await getCurrentUserProfile();
-        const [industryId, ...specializationParts] = (profile?.industry || "").split("-");
-        const specializationSlug = specializationParts.join("-").toLowerCase();
-        const selectedIndustry = industries.find((ind) => ind.id === industryId);
-        const matchedSpecialization = selectedIndustry?.subIndustries.find(
-            (sub) => sub.toLowerCase().replace(/\s+/g, "-") === specializationSlug
-        );
+        const [, ...specializationParts] = (profile?.industry || "").split("-");
+        const specialization = specializationParts.join(" ");
 
         initialValues = {
-            industry: industryId || "",
-            subIndustry: matchedSpecialization || "",
+            subIndustry: specialization || "",
             experience: profile?.experience != null ? String(profile.experience) : "",
             bio: profile?.bio || "",
-            skills: (profile?.skills || []).join(", "),
         };
     }
 
     return (
         <main>
-            <OnboardingForm industries={industries} initialValues={initialValues} isEditMode={isEditMode} />
+            <OnboardingForm initialValues={initialValues} isEditMode={isEditMode} />
         </main>
     );
 }

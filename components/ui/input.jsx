@@ -2,14 +2,15 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Input({
+const Input = React.forwardRef(function Input({
   className,
   type,
   error,
   ...props
-}) {
+}, ref) {
   return (
     <input
+      ref={ref}
       type={type}
       aria-invalid={!!error}
       data-slot="input"
@@ -21,6 +22,8 @@ function Input({
       )}
       {...props} />
   );
-}
+})
+
+Input.displayName = "Input"
 
 export { Input }
